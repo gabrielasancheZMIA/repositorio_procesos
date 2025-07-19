@@ -1,79 +1,74 @@
 import streamlit as st
 import os
+import shutil
 from pathlib import Path
 
-# Configuración de interfaz
-st.set_page_config(page_title="Repositorio por Área", layout="wide")
-st.markdown("""
-    <style>
-    .st-emotion-cache-1v0mbdj {
-        padding: 2rem 3rem;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Carpeta base del repositorio
-BASE_DIR = Path("repositorio_procesos")
+# Áreas definidas
 AREAS = ["Incentivos", "Productividad", "Seguimiento", "Sistemática"]
+BASE_DIR = Path("repositorio_procesos")
 
-# Crear carpetas si no existen
+# Crear estructura de carpetas si no existe
 for area in AREAS:
     os.makedirs(BASE_DIR / area, exist_ok=True)
 
-st.title("📁 Repositorio por Área")
+# Configuración general de la interfaz
+st.set_page_config(page_title="Repositorio por Área", page_icon="📁", layout="centered")
+
+st.markdown("## 📁 Repositorio por Área")
+st.markdown("Sube, descarga, elimina o renombra archivos organizados por área.\n")
 
 # Selección de área
-area = st.selectbox("Selecciona un área", AREAS)
-area_path = BASE_DIR / area
+area_seleccionada = st.selectbox("Selecciona un área", AREAS)
 
-st.subheader("📂 Archivos en el área seleccionada")
+if area_seleccionada:
+    area_path = BASE_DIR / area_seleccionada
+    archivos = os.listdir(area_path)
 
-# Listar archivos existentes
-todos_archivos = sorted(os.listdir(area_path))
+    st.markdown(f"### 📂 Archivos en el área seleccionada")
 
-if not todos_archivos:
-    st.info("No hay archivos en esta área.")
-else:
-    for archivo in todos_archivos:
-        col1, col2, col3, col4 = st.columns([4, 1, 2, 2])
+    if archivos:
+        archivo_seleccionado = st.selectbox("Selecciona un archivo", archivos)
+
+        col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.markdown(f"- {archivo}")
+            if st.button("📥 Descargar"):
+                with open(area_path / archivo_seleccionado, "rb") as f:
+                    st.download_button(
+                        label="Descargar archivo",
+                        data=f,
+                        file_name=archivo_seleccionado,
+                        mime="application/octet-stream"
+                    )
 
-        # Botón Eliminar
         with col2:
-            if st.button("🗑️ Eliminar", key=f"eliminar_{archivo}"):
-                os.remove(area_path / archivo)
-                st.success(f"'{archivo}' eliminado correctamente.")
-                st.experimental_rerun()
+            if st.button("🗑️ Eliminar"):
+                os.remove(area_path / archivo_seleccionado)
+                st.success(f"Archivo eliminado: {archivo_seleccionado}")
+                st.experimental_set_query_params()  # Refresca sin error
+                st.stop()
 
-        # Descargar archivo
         with col3:
-            with open(area_path / archivo, "rb") as f:
-                st.download_button("⬇️ Descargar", f, file_name=archivo, key=f"descargar_{archivo}")
+            nuevo_nombre = st.text_input("Renombrar", value=archivo_seleccionado.split(".")[0])
+            if st.button("✅ Renombrar"):
+                nueva_ruta = area_path / f"{nuevo_nombre}{Path(archivo_seleccionado).suffix}"
+                os.rename(area_path / archivo_seleccionado, nueva_ruta)
+                st.success(f"Archivo renombrado como: {nueva_ruta.name}")
+                st.experimental_set_query_params()  # Refresca sin error
+                st.stop()
+    else:
+        st.info("No hay archivos en esta área.")
 
-        # Renombrar archivo
-        with col4:
-            nuevo_nombre = st.text_input("Renombrar", value=archivo.split(".")[0], key=f"renombrar_input_{archivo}")
-            if st.button("✅ Renombrar", key=f"renombrar_btn_{archivo}"):
-                extension = Path(archivo).suffix
-                nuevo_archivo = f"{nuevo_nombre}{extension}"
-                nuevo_path = area_path / nuevo_archivo
-                if not nuevo_path.exists():
-                    os.rename(area_path / archivo, nuevo_path)
-                    st.success(f"'{archivo}' renombrado a '{nuevo_archivo}'")
-                    st.experimental_rerun()
-                else:
-                    st.error("Ya existe un archivo con ese nombre.")
-
-# Subir nuevo archivo
+# Subida de nuevos archivos
 st.markdown("---")
-st.subheader("📤 Subir nuevo archivo")
+st.markdown("### 📤 Subir nuevo archivo")
+
 archivo_subido = st.file_uploader("Selecciona un archivo", type=None)
 
-if archivo_subido:
-    ruta_guardar = area_path / archivo_subido.name
-    with open(ruta_guardar, "wb") as f:
+if archivo_subido is not None:
+    archivo_destino = BASE_DIR / area_seleccionada / archivo_subido.name
+    with open(archivo_destino, "wb") as f:
         f.write(archivo_subido.read())
-    st.success(f"'{archivo_subido.name}' subido correctamente a '{area}'.")
-    st.experimental_rerun()
+    st.success(f"Archivo cargado exitosamente: {archivo_subido.name}")
+    st.experimental_set_query_params()  # Refresca sin error
+    st.stop()
