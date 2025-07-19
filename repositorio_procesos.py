@@ -45,7 +45,7 @@ if area_seleccionada:
             if st.button("🗑️ Eliminar"):
                 os.remove(area_path / archivo_seleccionado)
                 st.success(f"Archivo eliminado: {archivo_seleccionado}")
-                st.experimental_set_query_params()  # Refresca sin error
+                st.query_params.clear()  # 🔄 Refrescar página sin error
                 st.stop()
 
         with col3:
@@ -54,7 +54,7 @@ if area_seleccionada:
                 nueva_ruta = area_path / f"{nuevo_nombre}{Path(archivo_seleccionado).suffix}"
                 os.rename(area_path / archivo_seleccionado, nueva_ruta)
                 st.success(f"Archivo renombrado como: {nueva_ruta.name}")
-                st.experimental_set_query_params()  # Refresca sin error
+                st.query_params.clear()
                 st.stop()
     else:
         st.info("No hay archivos en esta área.")
@@ -70,5 +70,5 @@ if archivo_subido is not None:
     with open(archivo_destino, "wb") as f:
         f.write(archivo_subido.read())
     st.success(f"Archivo cargado exitosamente: {archivo_subido.name}")
-    st.experimental_set_query_params()  # Refresca sin error
+    st.query_params.clear()
     st.stop()
