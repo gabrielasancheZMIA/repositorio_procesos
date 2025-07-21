@@ -1,74 +1,60 @@
 import streamlit as st
 import os
-import shutil
 from pathlib import Path
 
-# Áreas definidas
-AREAS = ["Incentivos", "Productividad", "Seguimiento", "Sistemática"]
-BASE_DIR = Path("repositorio_procesos")
+st.set_page_config(page_title="Repositorio de Procesos", layout="wide")
+st.title("📁 Repositorio General por Área")
 
-# Crear estructura de carpetas si no existe
-for area in AREAS:
-    os.makedirs(BASE_DIR / area, exist_ok=True)
+# Áreas disponibles
+areas = ["Incentivos", "Productividad", "Seguimiento", "Sistemática"]
 
-# Configuración general de la interfaz
-st.set_page_config(page_title="Repositorio por Área", page_icon="📁", layout="centered")
+# Crear carpetas si no existen
+base_path = Path("repositorio_procesos")
+for area in areas:
+    (base_path / area).mkdir(parents=True, exist_ok=True)
 
-st.markdown("## 📁 Repositorio por Área")
-st.markdown("Sube, descarga, elimina o renombra archivos organizados por área.\n")
+# ------------------ SUBIR ARCHIVO ------------------
+st.markdown("### 📤 Subir nuevo archivo al repositorio")
+with st.form("formulario_subida"):
+    col1, col2 = st.columns([2, 3])
+    with col1:
+        area_destino = st.selectbox("Área de destino", areas)
+    with col2:
+        archivo_subido = st.file_uploader("Selecciona un archivo", type=None, label_visibility="collapsed")
+    subir = st.form_submit_button("✅ Subir archivo")
 
-# Selección de área
-area_seleccionada = st.selectbox("Selecciona un área", AREAS)
+    if subir and archivo_subido:
+        ruta_destino = base_path / area_destino / archivo_subido.name
+        with open(ruta_destino, "wb") as f:
+            f.write(archivo_subido.getbuffer())
+        st.success(f"Archivo '{archivo_subido.name}' subido exitosamente a {area_destino}.")
+        st.rerun()
 
-if area_seleccionada:
-    area_path = BASE_DIR / area_seleccionada
-    archivos = os.listdir(area_path)
+st.markdown("---")
+st.markdown("### 📚 Archivos almacenados por área")
 
-    st.markdown(f"### 📂 Archivos en el área seleccionada")
+# ------------------ MOSTRAR TODOS LOS ARCHIVOS POR ÁREA ------------------
+for area in areas:
+    ruta_area = base_path / area
+    archivos = list(ruta_area.glob("*"))
 
     if archivos:
-        archivo_seleccionado = st.selectbox("Selecciona un archivo", archivos)
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            if st.button("📥 Descargar"):
-                with open(area_path / archivo_seleccionado, "rb") as f:
-                    st.download_button(
-                        label="Descargar archivo",
-                        data=f,
-                        file_name=archivo_seleccionado,
-                        mime="application/octet-stream"
-                    )
-
-        with col2:
-            if st.button("🗑️ Eliminar"):
-                os.remove(area_path / archivo_seleccionado)
-                st.success(f"Archivo eliminado: {archivo_seleccionado}")
-                st.query_params.clear()  # 🔄 Refrescar página sin error
-                st.stop()
-
-        with col3:
-            nuevo_nombre = st.text_input("Renombrar", value=archivo_seleccionado.split(".")[0])
-            if st.button("✅ Renombrar"):
-                nueva_ruta = area_path / f"{nuevo_nombre}{Path(archivo_seleccionado).suffix}"
-                os.rename(area_path / archivo_seleccionado, nueva_ruta)
-                st.success(f"Archivo renombrado como: {nueva_ruta.name}")
-                st.query_params.clear()
-                st.stop()
+        st.markdown(f"#### 📂 Área: {area}")
+        for archivo in archivos:
+            col1, col2, col3 = st.columns([4, 1, 3])
+            with col1:
+                st.markdown(f"- {archivo.name}")
+            with col2:
+                if st.button("🗑️ Eliminar", key=f"delete_{area}_{archivo.name}"):
+                    archivo.unlink()
+                    st.success(f"Archivo '{archivo.name}' eliminado de {area}.")
+                    st.rerun()
+            with col3:
+                nuevo_nombre = st.text_input("Renombrar", value=archivo.stem, key=f"rename_{area}_{archivo.name}")
+                if st.button("✅ Renombrar", key=f"rename_btn_{area}_{archivo.name}"):
+                    nueva_ruta = archivo.with_name(nuevo_nombre + archivo.suffix)
+                    archivo.rename(nueva_ruta)
+                    st.success(f"Archivo renombrado a '{nuevo_nombre}'.")
+                    st.rerun()
     else:
-        st.info("No hay archivos en esta área.")
-
-# Subida de nuevos archivos
-st.markdown("---")
-st.markdown("### 📤 Subir nuevo archivo")
-
-archivo_subido = st.file_uploader("Selecciona un archivo", type=None)
-
-if archivo_subido is not None:
-    archivo_destino = BASE_DIR / area_seleccionada / archivo_subido.name
-    with open(archivo_destino, "wb") as f:
-        f.write(archivo_subido.read())
-    st.success(f"Archivo cargado exitosamente: {archivo_subido.name}")
-    st.query_params.clear()
-    st.stop()
+        st.markdown(f"🗂️ *(Sin archivos en el área {area})*")
